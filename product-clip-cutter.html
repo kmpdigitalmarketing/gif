@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>Product Clip Cutter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a cutting bench — settings rail on the left, a queue of square "proof" cards on the right, export bar pinned at the bottom */
+:root{
+  --bg:#eceff3; --surface:#ffffff; --ink:#14171c; --muted:#5b6474; --line:#d5dae2;
+  --accent:#1f47d6; --accent-ink:#ffffff; --accent-soft:#e2e8fc;
+  --good:#12804a; --warn:#a96300; --bad:#bf3328; --strip:#e2e6ed; --strip-bar:#9aa6bb;
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1115; --surface:#171b21; --ink:#e7eaef; --muted:#98a1b0; --line:#2a303a;
+  --accent:#7390ff; --accent-ink:#0a0d14; --accent-soft:#1d2540;
+  --good:#4cc38a; --warn:#f0a640; --bad:#ff7d70; --strip:#212731; --strip-bar:#56627a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1115; --surface:#171b21; --ink:#e7eaef; --muted:#98a1b0; --line:#2a303a;
+  --accent:#7390ff; --accent-ink:#0a0d14; --accent-soft:#1d2540;
+  --good:#4cc38a; --warn:#f0a640; --bad:#ff7d70; --strip:#212731; --strip-bar:#56627a; color-scheme:dark}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 110px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:20px}
+h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.02em;margin:0;line-height:1.1;text-wrap:balance}
+.spec{font-family:var(--f-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px}
+.spec span{border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--surface)}
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.rail{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:20px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}
+@media (max-width:860px){.rail{position:static}}
+.label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.label output{font-family:var(--f-mono);text-transform:none;letter-spacing:0;color:var(--ink);font-weight:500}
+.logo-box{display:flex;gap:12px;align-items:center}
+.logo-thumb{width:64px;height:64px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;flex:none;
+  background:repeating-conic-gradient(var(--strip) 0 25%,transparent 0 50%) 0 0/12px 12px;overflow:hidden}
+.logo-thumb img{max-width:56px;max-height:56px}
+.logo-thumb small{font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
+.btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn.small{padding:4px 9px;font-size:12.5px}
+.btn:focus-visible,.seg button:focus-visible,.pos button:focus-visible,input:focus-visible,.drop:focus-visible,canvas:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.linkbtn{background:none;border:0;padding:0;color:var(--muted);font:inherit;font-size:12.5px;text-decoration:underline;cursor:pointer}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-family:var(--f-mono);font-size:13px;border:0;background:transparent;color:var(--ink);padding:7px 0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.pos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:132px;aspect-ratio:1;max-width:100%;border:1px solid var(--line);border-radius:8px;padding:4px;background:var(--bg)}
+.pos button{border:1px solid transparent;border-radius:5px;background:transparent;cursor:pointer;position:relative}
+.pos button::after{content:"";position:absolute;inset:30%;border-radius:3px;background:var(--strip-bar);opacity:.5}
+.pos button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.pos button[aria-pressed="true"]::after{background:var(--accent);opacity:1}
+.pos-row{display:flex;gap:14px;align-items:center}
+.pos-row p{margin:0;font-size:12.5px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+.queue{display:flex;flex-direction:column;gap:14px;min-width:0}
+.drop{border:1.5px dashed var(--strip-bar);border-radius:var(--r);background:var(--surface);padding:22px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop h2{font-family:var(--f-display);font-size:19px;margin:0 0 2px;font-weight:700}
+.drop p{margin:0;color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px}
+@media (max-width:560px){.card{grid-template-columns:minmax(0,1fr)}}
+.proof{position:relative;width:200px;max-width:100%;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--strip);touch-action:none}
+@media (max-width:560px){.proof{width:100%}}
+.proof canvas{width:100%;height:100%;display:block;cursor:grab}
+.proof canvas.dragging{cursor:grabbing}
+.proof .hint{position:absolute;left:6px;bottom:6px;font-size:10.5px;font-family:var(--f-mono);background:rgba(0,0,0,.55);color:#fff;padding:1px 6px;border-radius:4px;pointer-events:none}
+.meta{display:flex;flex-direction:column;gap:10px;min-width:0}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.name{font-weight:600;overflow-wrap:anywhere;margin:0;font-size:14.5px}
+.sub{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.fname{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);max-width:100%}
+.fname label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 10px;border-right:1px solid var(--line);display:flex;align-items:center;white-space:nowrap}
+.fname input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-family:var(--f-mono);font-size:13px;padding:6px 8px}
+.fname input:focus{outline:none}
+.fname:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.fname span{font-family:var(--f-mono);font-size:13px;color:var(--muted);padding:6px 10px 6px 0;display:flex;align-items:center}
+.pill{font-family:var(--f-mono);font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;flex:none}
+.pill.idle{color:var(--muted)} .pill.work{color:var(--accent)} .pill.good{color:var(--good)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)}
+.strip-wrap{display:flex;flex-direction:column;gap:4px}
+.strip{width:100%;height:46px;display:block;border-radius:6px;cursor:pointer;touch-action:none}
+.tc{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tc b{color:var(--ink);font-weight:500}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar{height:4px;border-radius:2px;background:var(--strip);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
+.err{color:var(--bad);font-size:12.5px;margin:0}
+.banner{border:1px solid var(--bad);color:var(--bad);border-radius:var(--r);padding:10px 14px;background:var(--surface);font-size:13px}
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;padding-bottom:env(safe-area-inset-bottom,0px)}
+.dock .in{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.dock .sum{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dock .btns{display:flex;gap:8px;flex-wrap:wrap}
+.vids{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;overflow:hidden}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Product Clip Cutter</h1>
+      <p class="note" style="margin-top:6px">Bulk-cut product videos into square, looping Shopify GIFs with your logo.</p>
+    </div>
+    <div class="spec"><span>1:1</span><span>Animated GIF</span><span id="specLen">5 s</span><span id="specFps">15 fps</span><span>&lt; 10 MB</span></div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <div class="grid">
+    <aside class="rail" aria-label="Export settings">
+      <div>
+        <div class="label">Logo <span style="text-transform:none;letter-spacing:0;font-weight:400">optional</span></div>
+        <div class="logo-box">
+          <div class="logo-thumb" id="logoThumb"><small>No logo</small></div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+            <button class="btn small" id="logoBtn" type="button">Upload logo</button>
+            <button class="linkbtn" id="logoClear" type="button" hidden>Remove</button>
+            <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/webp,image/jpeg" hidden>
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">Skip it to export clean clips. If you add one, a transparent PNG looks cleanest.</p>
+      </div>
+
+      <div>
+        <div class="label">Logo position</div>
+        <div class="pos-row">
+          <div class="pos" id="pos" role="group" aria-label="Logo position"></div>
+          <p id="posName">Top right</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="label"><label for="logoSize">Logo size</label><output id="logoSizeOut">18%</output></div>
+        <input type="range" id="logoSize" min="8" max="40" value="18">
+      </div>
+
+      <div>
+        <div class="label"><label for="logoOpacity">Logo opacity</label><output id="logoOpOut">100%</output></div>
+        <input type="range" id="logoOpacity" min="30" max="100" value="100">
+      </div>
+
+      <div>
+        <div class="label">Clip length</div>
+        <div class="seg" id="lenSeg" role="group" aria-label="Clip length">
+          <button type="button" data-v="3">3 s</button><button type="button" data-v="4">4 s</button><button type="button" data-v="5" aria-pressed="true">5 s</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">Speed</div>
+        <div class="seg" id="speedSeg" role="group" aria-label="Playback speed">
+          <button type="button" data-v="1" aria-pressed="true">1×</button><button type="button" data-v="1.25">1.25×</button><button type="button" data-v="1.5">1.5×</button><button type="button" data-v="2">2×</button>
+        </div>
+        <p class="note" style="margin-top:8px">Speeds up slow footage. The GIF stays the clip length you picked, so 2× fits 10 s of video into a 5 s GIF.</p>
+      </div>
+
+      <div>
+        <div class="label">Output size</div>
+        <div class="seg" id="resSeg" role="group" aria-label="Output size">
+          <button type="button" data-v="360">360²</button><button type="button" data-v="480">480²</button><button type="button" data-v="600" aria-pressed="true">600²</button><button type="button" data-v="720">720²</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">Frame rate</div>
+        <div class="seg" id="fpsSeg" role="group" aria-label="Frame rate">
+          <button type="button" data-v="10">10</button><button type="button" data-v="12">12</button><button type="button" data-v="15" aria-pressed="true">15</button>
+        </div>
+      </div>
+
+      <p class="note">Each clip is picked by scoring every quarter-second for sharpness, steadiness and exposure. Click the strip to move the cut, and drag the square to reframe.</p>
+      <p class="note">GIFs get big fast. If a clip goes over 10 MB, it is re-made smaller automatically and the card shows the final size.</p>
+    </aside>
+
+    <section class="queue" id="queue" aria-label="Videos">
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add videos">
+        <div>
+          <h2>Drop product videos here</h2>
+          <p>MP4, MOV or WebM. One video is fine, or add a whole batch.</p>
+        </div>
+        <button class="btn primary" type="button" id="addBtn">Choose videos</button>
+        <input type="file" id="vidInput" accept="video/*" multiple hidden>
+      </div>
+      <div id="list" style="display:flex;flex-direction:column;gap:14px"></div>
+    </section>
+  </div>
+</div>
+
+<div class="dock">
+  <div class="in">
+    <div class="sum" id="sum">No videos yet</div>
+    <div class="btns">
+      <button class="btn" id="clearAll" type="button">Clear all</button>
+      <button class="btn primary" id="processAll" type="button" disabled>Cut all clips</button>
+      <button class="btn" id="zipAll" type="button" disabled>Save all as ZIP</button>
+    </div>
+  </div>
+</div>
+<div class="vids" id="vids" aria-hidden="true"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>window.exports = {};</script>
+<script src="https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.js"></script>
+<script>window.gifenc = window.exports; try { delete window.exports; } catch(e){ window.exports = undefined; }</script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const FPS = 30, MAX_BYTES = 9.6 * 1024 * 1024;
+const S = { pos:'tr', logoSize:.18, logoOpacity:1, len:5, speed:1, res:600, fps:15, logo:null, logoUrl:null };
+let items = [], uid = 0, busyAll = false, downloads = null, codecCache = {};
+
+/* ---------- settings persistence (per-viewer convenience) ---------- */
+try { const p = JSON.parse(localStorage.getItem('pcc-settings')||'{}');
+  ['pos','logoSize','logoOpacity','len','speed','res','fps'].forEach(k => { if (p[k] != null) S[k] = p[k]; }); } catch(e){}
+if (![360,480,600,720].includes(S.res)) S.res = 600; if (![10,12,15].includes(S.fps)) S.fps = 15; if (![1,1.25,1.5,2].includes(S.speed)) S.speed = 1;
+function saveSettings(){ try{ localStorage.setItem('pcc-settings', JSON.stringify({pos:S.pos,logoSize:S.logoSize,logoOpacity:S.logoOpacity,len:S.len,speed:S.speed,res:S.res,fps:S.fps})); }catch(e){} }
+
+/* ---------- capability: downloads ---------- */
+if (window.claude && claude.use) claude.use('downloads').then(d => { downloads = d; refreshDock(); }).catch(()=>{});
+else downloads = { // opened as a standalone file or on your own site: plain browser download
+  save: async ({ filename, data }) => {
+    const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+    const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 20000);
+    return { status:'saved' };
+  } };
+
+/* ---------- helpers ---------- */
+const fmtT = t => { const m = Math.floor(t/60), s = t - m*60; return `${m}:${s.toFixed(1).padStart(4,'0')}`; };
+const fmtMB = b => (b/1048576).toFixed(1) + ' MB';
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function seek(v, t){
+  return new Promise((res, rej) => {
+    t = clamp(t, 0, Math.max(0, v.duration - 0.001));
+    if (Math.abs(v.currentTime - t) < 0.0005 && v.readyState >= 2) return res();
+    const to = setTimeout(() => { cleanup(); res(); }, 4000);
+    const ok = () => { cleanup(); res(); };
+    const bad = () => { cleanup(); rej(new Error('This video could not be decoded by your browser.')); };
+    function cleanup(){ clearTimeout(to); v.removeEventListener('seeked', ok); v.removeEventListener('error', bad); }
+    v.addEventListener('seeked', ok); v.addEventListener('error', bad);
+    v.currentTime = t;
+  });
+}
+function lock(item, fn){ const p = item.lock.then(fn, fn); item.lock = p.catch(()=>{}); return p; }
+
+/* ---------- encoder support ---------- */
+async function pickCodec(w, h, bitrate){
+  const key = w+'x'+h;
+  if (codecCache[key]) return codecCache[key];
+  if (!('VideoEncoder' in window)) return null;
+  for (const codec of ['avc1.640028','avc1.4d0028','avc1.42e028','avc1.640033','avc1.42e033']) {
+    try {
+      const cfg = { codec, width:w, height:h, bitrate, framerate:FPS, avc:{format:'avc'} };
+      const r = await VideoEncoder.isConfigSupported(cfg);
+      if (r.supported) { codecCache[key] = codec; return codec; }
+    } catch(e){}
+  }
+  return null;
+}
+async function encodeFrames({ w, h, n, bitrate, draw, onProgress }){
+  const codec = await pickCodec(w, h, bitrate);
+  if (!codec) throw new Error('This browser can’t encode MP4. Use a recent Chrome, Edge or Safari.');
+  const muxer = new Mp4Muxer.Muxer({ target:new Mp4Muxer.ArrayBufferTarget(), video:{ codec:'avc', width:w, height:h, frameRate:FPS }, fastStart:'in-memory' });
+  let err = null;
+  const enc = new VideoEncoder({ output:(c,m) => muxer.addVideoChunk(c,m), error:e => { err = e; } });
+  enc.configure({ codec, width:w, height:h, bitrate, bitrateMode:'variable', framerate:FPS, avc:{format:'avc'}, latencyMode:'quality' });
+  for (let i = 0; i < n; i++) {
+    if (err) throw err;
+    const canvas = await draw(i);
+    const frame = new VideoFrame(canvas, { timestamp: Math.round(i*1e6/FPS), duration: Math.round(1e6/FPS) });
+    enc.encode(frame, { keyFrame: i % (FPS*2) === 0 });
+    frame.close();
+    while (enc.encodeQueueSize > 6) await sleep(4);
+    onProgress && onProgress((i+1)/n);
+  }
+  await enc.flush(); enc.close();
+  if (err) throw err;
+  muxer.finalize();
+  return new Blob([muxer.target.buffer], { type:'video/mp4' });
+}
+
+/* ---------- logo ---------- */
+function drawLogo(ctx, size){
+  if (!S.logo) return;
+  const lw = size * S.logoSize, lh = lw * (S.logo.height / S.logo.width);
+  const m = size * 0.045;
+  const col = S.pos[1], row = S.pos[0];
+  const x = col==='l' ? m : col==='r' ? size - lw - m : (size - lw)/2;
+  const y = row==='t' ? m : row==='b' ? size - lh - m : (size - lh)/2;
+  ctx.globalAlpha = S.logoOpacity; ctx.drawImage(S.logo, x, y, lw, lh); ctx.globalAlpha = 1;
+}
+function drawSquare(ctx, item, size){
+  const v = item.video, side = Math.min(item.w, item.h);
+  const sx = (item.w - side) * item.cx, sy = (item.h - side) * item.cy;
+  ctx.drawImage(v, sx, sy, side, side, 0, 0, size, size);
+  drawLogo(ctx, size);
+}
+
+/* ---------- analysis: find the clearest window ---------- */
+const AN = 96;
+const anCanvas = document.createElement('canvas'); anCanvas.width = anCanvas.height = AN;
+const anCtx = anCanvas.getContext('2d', { willReadFrequently:true });
+function frameStats(item, prev){
+  const v = item.video, side = Math.min(item.w, item.h);
+  anCtx.drawImage(v, (item.w-side)/2, (item.h-side)/2, side, side, 0, 0, AN, AN);
+  const d = anCtx.getImageData(0,0,AN,AN).data, g = new Float32Array(AN*AN);
+  let lum = 0;
+  for (let i=0,j=0;i<d.length;i+=4,j++){ g[j] = .299*d[i]+.587*d[i+1]+.114*d[i+2]; lum += g[j]; }
+  lum /= AN*AN;
+  let s=0, s2=0, cnt=0;
+  for (let y=1;y<AN-1;y++) for (let x=1;x<AN-1;x++){
+    const k = y*AN+x, L = 4*g[k]-g[k-1]-g[k+1]-g[k-AN]-g[k+AN];
+    const cxw = 1 - Math.hypot(x/AN-.5, y/AN-.5)*1.2;           // center-weighted: product usually in the middle
+    const wgt = Math.max(.15, cxw);
+    s += L*wgt; s2 += L*L*wgt; cnt += wgt;
+  }
+  const sharp = s2/cnt - (s/cnt)**2;
+  let motion = 0;
+  if (prev) { for (let j=0;j<g.length;j++) motion += Math.abs(g[j]-prev[j]); motion /= g.length; }
+  return { g, sharp, motion, lum };
+}
+async function analyze(item){
+  item.status = 'analyzing'; renderCard(item);
+  const dur = item.dur, n = Math.round(clamp(dur*4, 12, 180));
+  const raw = []; let prev = null;
+  for (let i=0;i<n;i++){
+    const t = 0.05 + (dur-0.1) * i/(n-1);
+    await seek(item.video, t);
+    const st = frameStats(item, prev); prev = st.g;
+    raw.push({ t, sharp:st.sharp, motion:i?st.motion:null, lum:st.lum });
+    if (i % 6 === 0) { item.progress = i/n; renderStatus(item); }
+  }
+  if (raw.length>1) raw[0].motion = raw[1].motion;
+  const maxS = Math.max(...raw.map(r=>r.sharp)) || 1;
+  const maxM = Math.max(...raw.map(r=>r.motion)) || 1;
+  item.samples = raw.map(r => {
+    const expo = r.lum < 35 ? r.lum/35 : r.lum > 225 ? (255-r.lum)/30 : 1;
+    const score = .55*Math.sqrt(r.sharp/maxS) + .30*(1 - r.motion/maxM) + .15*clamp(expo,0,1);
+    return { t:r.t, score:clamp(score,0,1) };
+  });
+  autoPick(item);
+  item.status = 'ready'; item.progress = 0;
+}
+function windowScore(item, start, len){
+  let s=0, c=0; for (const p of item.samples) if (p.t>=start && p.t<=start+len){ s+=p.score; c++; }
+  return c ? s/c : 0;
+}
+function autoPick(item){
+  const len = Math.min(S.len * S.speed, item.dur);
+  item.len = len;
+  if (item.dur <= len + 0.05) { item.start = 0; item.autoScore = windowScore(item, 0, len); return; }
+  let best = 0, bestS = -1;
+  for (let s = 0; s <= item.dur - len; s += 0.1){ const sc = windowScore(item, s, len); if (sc > bestS){ bestS = sc; best = s; } }
+  item.start = best; item.autoScore = bestS; item.manual = false;
+}
+
+/* ---------- GIF export ---------- */
+async function encodeGif({ size, n, fps, draw, onProgress }){
+  const { GIFEncoder, quantize, applyPalette } = window.gifenc;
+  // one shared palette from frames across the clip: less flicker, smaller file
+  const PS = 96, picks = Math.min(8, n), pc = document.createElement('canvas');
+  pc.width = PS; pc.height = PS*picks; const pctx = pc.getContext('2d', { willReadFrequently:true });
+  for (let k=0;k<picks;k++){ const c = await draw(Math.floor(k*(n-1)/Math.max(1,picks-1))); pctx.drawImage(c, 0, k*PS, PS, PS); }
+  const palette = quantize(pctx.getImageData(0,0,PS,PS*picks).data, 256);
+  const gif = GIFEncoder(), delay = Math.round(1000/fps);
+  for (let i=0;i<n;i++){
+    const c = await draw(i), data = c.getContext('2d').getImageData(0,0,size,size).data;
+    const index = applyPalette(data, palette);
+    gif.writeFrame(index, size, size, i===0 ? { palette, delay, repeat:0 } : { delay });
+    onProgress && onProgress((i+1)/n);
+    if (i % 3 === 2) await sleep(0);
+  }
+  gif.finish();
+  return new Blob([gif.bytes()], { type:'image/gif' });
+}
+async function exportItem(item){
+  if (!item.samples) return;
+  item.status = 'encoding'; item.progress = 0; item.out = null; item.error = null; item.note = ''; renderCard(item);
+  let size = S.res, fps = S.fps; const spd = S.speed;
+  try {
+    await lock(item, async () => {
+      for (let attempt = 0; attempt < 5; attempt++){
+        const n = Math.max(2, Math.round(item.len / spd * fps));
+        const c = document.createElement('canvas'); c.width = c.height = size;
+        const ctx = c.getContext('2d', { alpha:false, willReadFrequently:true });
+        item.note = attempt ? `making smaller (${size}px, ${fps} fps)` : '';
+        const blob = await encodeGif({ size, n, fps,
+          draw: async i => { await seek(item.video, item.start + i*spd/fps); drawSquare(ctx, item, size); return c; },
+          onProgress: p => { item.progress = p; renderStatus(item); } });
+        if (blob.size <= MAX_BYTES || attempt === 4) { item.out = blob; item.outSize = size; item.outFps = fps; item.outSpeed = spd; break; }
+        const shrink = Math.sqrt(MAX_BYTES / blob.size * 0.88);
+        if (size * shrink < 400 && fps > 10) fps = 10;
+        else size = Math.max(240, Math.floor(size * shrink / 2) * 2);
+      }
+    });
+    item.status = item.out.size <= MAX_BYTES ? 'done' : 'big'; item.note = '';
+  } catch(e){ item.status = 'error'; item.error = e.message || String(e); }
+  renderCard(item); refreshDock();
+}
+const cleanName = v => (v||'').replace(/\.gif$/i,'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,'').replace(/\s+/g,' ').trim().slice(0,120);
+const defaultName = item => cleanName(item.name.replace(/\.[^.]+$/,'')).replace(/\s+/g,'-') + '-square';
+const outName = item => (cleanName(item.outBase) || defaultName(item) || 'clip') + '.gif';
+async function saveOne(item){
+  if (!downloads || !item.out) return;
+  try { await downloads.save({ filename: outName(item), data: item.out }); }
+  catch(e){ if (e && e.code !== 'declined') flash(`Couldn’t save: ${e.message||e.code}`); }
+}
+async function saveZip(){
+  const done = items.filter(i => i.out);
+  if (!downloads || !done.length) return;
+  const zip = new JSZip(), used = new Set();
+  for (const it of done){ let n = outName(it), k = 2; while (used.has(n)) n = n.replace(/(\.gif)$/, `-${k++}$1`); used.add(n); zip.file(n, it.out); }
+  const btn = $('#zipAll'); btn.disabled = true; btn.textContent = 'Zipping…';
+  try { const blob = await zip.generateAsync({ type:'blob', compression:'STORE' });
+    await downloads.save({ filename:`shopify-clips-${new Date().toISOString().slice(0,10)}.zip`, data: blob }); }
+  catch(e){ if (e && e.code !== 'declined') flash(`Couldn’t save: ${e.message||e.code}`); }
+  btn.textContent = 'Save all as ZIP'; refreshDock();
+}
+function flash(msg){ const b = $('#banner'); b.textContent = msg; b.hidden = false; clearTimeout(flash.t); flash.t = setTimeout(()=> b.hidden = true, 6000); }
+
+/* ---------- adding videos ---------- */
+async function addFiles(files, opts={}){
+  for (const file of files){
+    if (!file.type.startsWith('video/') && !/\.(mp4|mov|webm|m4v)$/i.test(file.name)) continue;
+    const item = { id:++uid, file, name:file.name, demo:!!opts.demo, url:URL.createObjectURL(file), cx:.5, cy:.5, status:'loading', progress:0, lock:Promise.resolve() };
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = item.url;
+    $('#vids').appendChild(v); item.video = v;
+    items.push(item); buildCard(item); refreshDock();
+    try {
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('Your browser can’t read this video format. Try MP4 (H.264).')); });
+      item.w = v.videoWidth; item.h = v.videoHeight; item.dur = v.duration;
+      if (!isFinite(item.dur) || !item.w) throw new Error('Couldn’t read this video’s length.');
+      await lock(item, () => analyze(item));
+      await drawProof(item);
+    } catch(e){ item.status = 'error'; item.error = e.message; }
+    renderCard(item); refreshDock();
+  }
+}
+
+/* ---------- cards ---------- */
+function buildCard(item){
+  const el = document.createElement('article'); el.className = 'card'; item.el = el;
+  el.innerHTML = `
+    <div class="proof"><canvas width="400" height="400" tabindex="0" aria-label="Square preview. Drag to reframe."></canvas><span class="hint">drag to reframe</span></div>
+    <div class="meta">
+      <div class="top"><div style="min-width:0"><p class="name"></p><div class="sub"></div></div><span class="pill idle">Loading</span></div>
+      <div class="fname"><label>GIF name</label><input type="text" spellcheck="false" autocomplete="off"><span>.gif</span></div>
+      <div class="strip-wrap">
+        <canvas class="strip" height="92" aria-label="Clarity score over time. Click to move the cut."></canvas>
+        <div class="tc"><span>0:00.0</span><span class="cut"></span><span class="end"></span></div>
+      </div>
+      <div class="bar" hidden><i></i></div>
+      <p class="err" hidden></p>
+      <div class="actions">
+        <button class="btn small play" type="button">Play clip</button>
+        <button class="btn small auto" type="button" hidden>Reset to best shot</button>
+        <button class="btn small primary one" type="button">Cut this clip</button>
+        <button class="btn small save" type="button" hidden>Save GIF</button>
+        <span style="flex:1"></span>
+        <button class="linkbtn remove" type="button">Remove</button>
+      </div>
+    </div>`;
+  el.querySelector('.name').textContent = item.name + (item.demo ? '  (demo clip)' : '');
+  const fn = el.querySelector('.fname input'), fl = el.querySelector('.fname label');
+  fn.id = 'fn-' + item.id; fl.htmlFor = fn.id;
+  item.outBase = defaultName(item); fn.value = item.outBase;
+  fn.addEventListener('input', () => { item.outBase = fn.value; });
+  fn.addEventListener('blur', () => { const c = cleanName(fn.value) || defaultName(item); item.outBase = c; fn.value = c; });
+  $('#list').appendChild(el);
+  const proof = el.querySelector('.proof canvas'), strip = el.querySelector('.strip');
+
+  // reframe by dragging
+  let drag = null;
+  proof.addEventListener('pointerdown', e => { if (!item.samples) return; drag = { x:e.clientX, y:e.clientY, cx:item.cx, cy:item.cy }; proof.setPointerCapture(e.pointerId); proof.classList.add('dragging'); });
+  proof.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const r = proof.getBoundingClientRect(), side = Math.min(item.w,item.h);
+    if (item.w > item.h) item.cx = clamp(drag.cx - (e.clientX-drag.x)/r.width * side/(item.w-side), 0, 1);
+    if (item.h > item.w) item.cy = clamp(drag.cy - (e.clientY-drag.y)/r.height * side/(item.h-side), 0, 1);
+    paintProof(item); markStale(item);
+  });
+  const endDrag = () => { drag = null; proof.classList.remove('dragging'); };
+  proof.addEventListener('pointerup', endDrag); proof.addEventListener('pointercancel', endDrag);
+  proof.addEventListener('keydown', e => {
+    const step = .05, side = Math.min(item.w,item.h);
+    if (!item.samples) return;
+    if (item.w > item.h && (e.key==='ArrowLeft'||e.key==='ArrowRight')) { item.cx = clamp(item.cx + (e.key==='ArrowLeft'?-step:step),0,1); }
+    else if (item.h > item.w && (e.key==='ArrowUp'||e.key==='ArrowDown')) { item.cy = clamp(item.cy + (e.key==='ArrowUp'?-step:step),0,1); }
+    else return;
+    e.preventDefault(); paintProof(item); markStale(item);
+  });
+
+  // move cut via strip
+  let sdrag = false;
+  const setFromX = x => {
+    const r = strip.getBoundingClientRect(), t = (x - r.left)/r.width * item.dur;
+    item.start = clamp(t - item.len/2, 0, Math.max(0, item.dur - item.len)); item.manual = true;
+    drawStrip(item); renderTimes(item); markStale(item); schedProof(item);
+  };
+  strip.addEventListener('pointerdown', e => { if (!item.samples || item.status==='encoding') return; sdrag = true; strip.setPointerCapture(e.pointerId); setFromX(e.clientX); });
+  strip.addEventListener('pointermove', e => { if (sdrag) setFromX(e.clientX); });
+  strip.addEventListener('pointerup', () => sdrag = false); strip.addEventListener('pointercancel', () => sdrag = false);
+
+  el.querySelector('.play').onclick = () => togglePlay(item);
+  el.querySelector('.auto').onclick = () => { autoPick(item); drawStrip(item); renderTimes(item); markStale(item); schedProof(item); renderCard(item); };
+  el.querySelector('.one').onclick = async () => { stopPlay(item); await exportItem(item); };
+  el.querySelector('.save').onclick = () => saveOne(item);
+  el.querySelector('.remove').onclick = () => removeItem(item);
+  renderCard(item);
+}
+function removeItem(item){
+  stopPlay(item); item.removed = true;
+  item.el.remove(); item.video.remove(); URL.revokeObjectURL(item.url);
+  items = items.filter(i => i !== item); refreshDock();
+}
+function markStale(item){
+  if (item.out){ item.out = null; item.status = 'ready'; renderCard(item); refreshDock(); }
+}
+let proofTimers = new Map();
+function schedProof(item){ clearTimeout(proofTimers.get(item)); proofTimers.set(item, setTimeout(() => drawProof(item), 90)); }
+async function drawProof(item){
+  if (!item.samples || item.playing) return;
+  await lock(item, async () => { await seek(item.video, item.start + item.len/2); });
+  paintProof(item);
+}
+function paintProof(item){
+  const c = item.el.querySelector('.proof canvas'), ctx = c.getContext('2d');
+  if (item.video.readyState >= 2) drawSquare(ctx, item, c.width);
+  const hint = item.el.querySelector('.hint');
+  hint.hidden = item.w === item.h;
+}
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function drawStrip(item){
+  const c = item.el.querySelector('.strip'), dpr = window.devicePixelRatio || 1;
+  const W = Math.max(100, c.clientWidth), H = 46;
+  c.width = W*dpr; c.height = H*dpr;
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle = cssVar('--strip'); ctx.fillRect(0,0,W,H);
+  if (!item.samples) return;
+  const n = item.samples.length, bw = W/n;
+  // selected window
+  const x0 = item.start/item.dur*W, x1 = (item.start+item.len)/item.dur*W;
+  ctx.fillStyle = cssVar('--accent-soft'); ctx.fillRect(x0,0,x1-x0,H);
+  item.samples.forEach((p,i) => {
+    const inWin = p.t >= item.start && p.t <= item.start + item.len;
+    const h = 4 + p.score*(H-10);
+    ctx.fillStyle = inWin ? cssVar('--accent') : cssVar('--strip-bar');
+    ctx.fillRect(i*bw + bw*.15, H-h-3, Math.max(1, bw*.7), h);
+  });
+  ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 2;
+  ctx.strokeRect(x0+1, 1, Math.max(2, x1-x0-2), H-2);
+}
+function renderTimes(item){
+  const el = item.el;
+  if (!item.samples) return;
+  el.querySelector('.end').textContent = fmtT(item.dur);
+  el.querySelector('.cut').innerHTML = `cut <b>${fmtT(item.start)} → ${fmtT(item.start+item.len)}</b>` + (S.speed !== 1 ? ` · ${S.speed}× = ${(item.len/S.speed).toFixed(1)} s GIF` : '');
+}
+function renderStatus(item){
+  const el = item.el; if (!el) return;
+  const pill = el.querySelector('.pill'), bar = el.querySelector('.bar');
+  const map = {
+    loading:['work','Loading'], analyzing:['work',`Finding best shot ${Math.round(item.progress*100)}%`],
+    ready:['idle','Ready to cut'], encoding:['work',`${item.note ? 'Re-making smaller' : 'Making GIF'} ${Math.round(item.progress*100)}%`],
+    done:['good', item.out ? `Done · ${fmtMB(item.out.size)} · ${item.outSize}px ${item.outFps} fps${item.outSpeed !== 1 ? ' · ' + item.outSpeed + '×' : ''}` : 'Done'], big:['warn', item.out ? `Over 10 MB · ${fmtMB(item.out.size)}` : 'Too large'],
+    error:['bad','Error'] };
+  const [cls, txt] = map[item.status] || ['idle', item.status];
+  pill.className = 'pill ' + cls; pill.textContent = txt;
+  const showBar = item.status === 'encoding' || item.status === 'analyzing';
+  bar.hidden = !showBar; bar.firstElementChild.style.width = (item.progress*100).toFixed(1) + '%';
+}
+function renderCard(item){
+  const el = item.el; if (!el) return;
+  const sub = el.querySelector('.sub');
+  if (item.w) {
+    const orient = item.w === item.h ? 'square' : item.w > item.h ? 'landscape' : 'portrait';
+    sub.textContent = `${item.w}×${item.h} · ${fmtT(item.dur)} · ${orient}` + (item.dur < 3 ? ' · shorter than 3 s' : '');
+  } else sub.textContent = fmtMB(item.file.size);
+  renderStatus(item); drawStrip(item); renderTimes(item);
+  const err = el.querySelector('.err'); err.hidden = !item.error; err.textContent = item.error || '';
+  const ready = !!item.samples, working = item.status === 'encoding' || item.status === 'analyzing' || item.status === 'loading';
+  el.querySelector('.play').disabled = !ready || working;
+  el.querySelector('.play').textContent = item.playing ? 'Stop' : 'Play clip';
+  el.querySelector('.one').disabled = !ready || working || busyAll;
+  el.querySelector('.one').hidden = !!item.out;
+  el.querySelector('.auto').hidden = !item.manual;
+  const save = el.querySelector('.save');
+  save.hidden = !item.out; save.disabled = !downloads;
+  save.title = downloads ? '' : 'Saving works when this page is open in Claude.';
+  el.querySelector('.remove').disabled = working;
+}
+
+/* ---------- preview playback ---------- */
+function togglePlay(item){ item.playing ? stopPlay(item) : startPlay(item); }
+async function startPlay(item){
+  if (!item.samples) return;
+  item.playing = true; renderCard(item);
+  await lock(item, () => seek(item.video, item.start));
+  if (!item.playing) return;
+  const v = item.video, c = item.el.querySelector('.proof canvas'), ctx = c.getContext('2d');
+  v.playbackRate = S.speed;
+  try { await v.play(); } catch(e){ stopPlay(item); return; }
+  const loop = () => {
+    if (!item.playing) return;
+    if (v.currentTime >= item.start + item.len || v.ended) v.currentTime = item.start;
+    drawSquare(ctx, item, c.width);
+    item.raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+function stopPlay(item){
+  if (!item.playing) return;
+  item.playing = false; cancelAnimationFrame(item.raf); item.video.pause();
+  renderCard(item); drawProof(item);
+}
+
+/* ---------- dock ---------- */
+function refreshDock(){
+  const total = items.length, done = items.filter(i=>i.out).length, ready = items.filter(i=>i.samples && !i.out && i.status!=='encoding').length;
+  const bytes = items.reduce((s,i)=> s + (i.out ? i.out.size : 0), 0);
+  $('#sum').textContent = !total ? 'No videos yet' : `${total} video${total>1?'s':''} · ${done} cut${done? ' · '+fmtMB(bytes):''}${downloads===null && done ? ' · open in Claude to save' : ''}`;
+  $('#processAll').disabled = busyAll || !ready;
+  $('#processAll').textContent = busyAll ? 'Cutting…' : ready && done ? `Cut ${ready} remaining` : 'Cut all clips';
+  $('#zipAll').disabled = busyAll || !done || !downloads;
+  $('#clearAll').disabled = busyAll || !total;
+  items.forEach(i => { if (i.el){ const b = i.el.querySelector('.save'); b.disabled = !downloads; } });
+}
+$('#processAll').onclick = async () => {
+  busyAll = true; refreshDock(); items.forEach(renderCard);
+  for (const it of [...items]) { if (it.removed || !it.samples || it.out) continue; stopPlay(it); await exportItem(it); }
+  busyAll = false; refreshDock(); items.forEach(renderCard);
+};
+$('#zipAll').onclick = saveZip;
+$('#clearAll').onclick = () => { [...items].forEach(removeItem); };
+
+/* ---------- inputs ---------- */
+const drop = $('#drop'), vidInput = $('#vidInput');
+drop.addEventListener('click', e => { if (e.target.id !== 'vidInput') vidInput.click(); });
+drop.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); vidInput.click(); } });
+vidInput.onchange = () => { addFiles([...vidInput.files]); vidInput.value = ''; };
+['dragenter','dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t==='drop' || !e.relatedTarget) drop.classList.remove('over'); }));
+document.addEventListener('drop', e => { const f = [...(e.dataTransfer?.files||[])]; if (f.length) addFiles(f); });
+
+$('#logoBtn').onclick = () => $('#logoInput').click();
+$('#logoInput').onchange = async () => {
+  const f = $('#logoInput').files[0]; $('#logoInput').value = ''; if (!f) return;
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    if (S.logoUrl) URL.revokeObjectURL(S.logoUrl);
+    S.logo = img; S.logoUrl = url;
+    $('#logoThumb').innerHTML = ''; const t = img.cloneNode(); t.alt = 'Your logo'; $('#logoThumb').appendChild(t);
+    $('#logoClear').hidden = false; $('#logoBtn').textContent = 'Replace logo';
+    settingsChanged();
+  };
+  img.onerror = () => flash('That image couldn’t be opened. Try a PNG.');
+  img.src = url;
+};
+$('#logoClear').onclick = () => { S.logo = null; if (S.logoUrl) URL.revokeObjectURL(S.logoUrl); S.logoUrl = null;
+  $('#logoThumb').innerHTML = '<small>No logo</small>'; $('#logoClear').hidden = true; $('#logoBtn').textContent = 'Upload logo'; settingsChanged(); };
+
+const POS = [['tl','Top left'],['tc','Top center'],['tr','Top right'],['ml','Middle left'],['mc','Center'],['mr','Middle right'],['bl','Bottom left'],['bc','Bottom center'],['br','Bottom right']];
+POS.forEach(([k,label]) => { const b = document.createElement('button'); b.type='button'; b.dataset.v=k; b.setAttribute('aria-label',label);
+  b.onclick = () => { S.pos = k; syncControls(); settingsChanged(); }; $('#pos').appendChild(b); });
+$('#logoSize').oninput = e => { S.logoSize = e.target.value/100; syncControls(); settingsChanged(true); };
+$('#logoOpacity').oninput = e => { S.logoOpacity = e.target.value/100; syncControls(); settingsChanged(true); };
+function applyLen(){
+  items.forEach(it => { if (!it.samples) return; if (it.playing) stopPlay(it);
+    if (it.manual){ const mid = it.start + it.len/2; it.len = Math.min(S.len*S.speed, it.dur); it.start = clamp(mid - it.len/2,0,Math.max(0,it.dur-it.len)); } else autoPick(it);
+    markStale(it); renderCard(it); schedProof(it); });
+  saveSettings();
+}
+$('#lenSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.len = +b.dataset.v; syncControls(); applyLen(); };
+$('#speedSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.speed = +b.dataset.v; syncControls(); applyLen(); };
+$('#resSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.res = +b.dataset.v; syncControls(); settingsChanged(); };
+$('#fpsSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.fps = +b.dataset.v; syncControls(); settingsChanged(); };
+function syncControls(){
+  $('#pos').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v===S.pos));
+  $('#posName').textContent = POS.find(p=>p[0]===S.pos)[1];
+  $('#logoSize').value = Math.round(S.logoSize*100); $('#logoSizeOut').textContent = Math.round(S.logoSize*100)+'%';
+  $('#logoOpacity').value = Math.round(S.logoOpacity*100); $('#logoOpOut').textContent = Math.round(S.logoOpacity*100)+'%';
+  $('#lenSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v===S.len));
+  $('#resSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v===S.res));
+  $('#fpsSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v===S.fps));
+  $('#speedSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v===S.speed));
+  $('#specLen').textContent = S.len + ' s' + (S.speed !== 1 ? ' · ' + S.speed + '×' : ''); $('#specFps').textContent = S.fps + ' fps';
+}
+function settingsChanged(light){
+  items.forEach(it => { if (it.samples){ markStale(it); if (!it.playing) paintProof(it); } });
+  saveSettings();
+}
+syncControls();
+window.addEventListener('resize', () => items.forEach(drawStrip));
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => items.forEach(drawStrip));
+new MutationObserver(() => items.forEach(drawStrip)).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+/* ---------- support check + demo clip ---------- */
+async function init(){
+  if (!window.gifenc || !window.gifenc.GIFEncoder){ $('#banner').hidden = false; $('#banner').textContent = 'The GIF maker didn’t load. Check your connection and reload the page.'; return; }
+  const canDemo = 'VideoEncoder' in window && typeof Mp4Muxer !== 'undefined' && await pickCodec(1280,720,4e6);
+  if (!canDemo) return;
+  let seen = false; try { seen = localStorage.getItem('pcc-demo-gif') === '1'; } catch(e){}
+  if (!seen) { try { localStorage.setItem('pcc-demo-gif','1'); } catch(e){} makeDemo(); }
+}
+async function makeDemo(){
+  // 8-second synthetic product shot: shaky and soft at the start and end, steady and sharp in the middle
+  const W = 1280, H = 720, n = 8*FPS, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  try {
+    const blob = await encodeFrames({ w:W, h:H, n, bitrate:4e6, draw: async i => {
+      const t = i/FPS, steady = t > 2.6 && t < 6.2;
+      const shake = steady ? 0 : 26*Math.sin(t*9) , blur = steady ? 0 : 7 - Math.min(7, Math.abs(t - (t<4?2.6:6.2))*4);
+      const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#dfe5ee'); g.addColorStop(1,'#b9c3d2'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      ctx.save(); ctx.filter = blur > .3 ? `blur(${blur.toFixed(1)}px)` : 'none';
+      const x = W/2 + shake + (t-4)*14, y = H/2 + 20 + shake*.4;
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x, y+200, 120, 18, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#23324f'; roundRect(ctx, x-95, y-150, 190, 340, 34); ctx.fill();
+      ctx.fillStyle = '#c9a25a'; roundRect(ctx, x-45, y-215, 90, 70, 12); ctx.fill();
+      ctx.fillStyle = '#f3efe6'; roundRect(ctx, x-72, y-40, 144, 120, 8); ctx.fill();
+      ctx.fillStyle = '#23324f'; ctx.font = '700 26px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('NOIR', x, y+14);
+      ctx.font = '500 13px Arial, sans-serif'; ctx.fillText('EAU DE PARFUM', x, y+42); ctx.fillText('50 ml', x, y+62);
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; roundRect(ctx, x-80, y-135, 22, 300, 11); ctx.fill();
+      ctx.restore();
+      return c; } });
+    await addFiles([new File([blob], 'demo-perfume-bottle.mp4', { type:'video/mp4' })], { demo:true });
+  } catch(e){ /* demo is optional */ }
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+init();
+})();
+</script>
+
+</body>
+</html>
